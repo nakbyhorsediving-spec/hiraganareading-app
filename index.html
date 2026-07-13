@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ひらがな・カタカナ フラッシュカード</title>
     
-    <!-- Google Fonts から BIZ UD教科書体をオンラインから強制読み込み -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDKyokasho:wght@400;700&display=swap" rel="stylesheet">
@@ -118,7 +117,6 @@
 </head>
 <body>
 
-    <!-- 文字種とランダムを切り替える上部パネル -->
     <div id="top-controls">
         <button id="mode-hiragana" class="active" onclick="setMode('hiragana')">ひらがな</button>
         <button id="mode-katakana" onclick="setMode('katakana')">カタカナ</button>
@@ -154,8 +152,11 @@
         let timer = null;
         let speed = 2000;
 
-        // インデックス管理用の配列（あいうえお順のときは 0〜45 がそのまま入る）
-        let orderArray = Array.from({length: hiragana.length}, (_, i) => i);
+        // インデックス管理用の配列を確実に生成
+        let orderArray = [];
+        for (let i = 0; i < hiragana.length; i++) {
+            orderArray.push(i);
+        }
         let orderIndex = 0;
 
         const display = document.getElementById('char-display');
@@ -170,7 +171,6 @@
 
         // ボタンの活性・非活性を制御する関数
         function updateButtonStates() {
-            // 再生中（isRunning === true）なら、設定系ボタンをすべて無効化（disabled）にする
             hiraBtn.disabled = isRunning;
             kataBtn.disabled = isRunning;
             randomBtn.disabled = isRunning;
@@ -180,7 +180,7 @@
 
         // ひらがな・カタカナの切り替え
         function setMode(mode) {
-            if (isRunning) return; // 動作中は処理しない
+            if (isRunning) return; 
 
             currentMode = mode;
             if (mode === 'hiragana') {
@@ -195,7 +195,7 @@
 
         // ランダムボタンのオンオフ切り替え
         function toggleRandom() {
-            if (isRunning) return; // 動作中は処理しない
+            if (isRunning) return; 
 
             isRandom = !isRandom;
             if (isRandom) {
@@ -208,25 +208,32 @@
             updateDisplay();
         }
 
-        // 順番をシャッフルする
+        // 順番を確実にシャッフルする
         function shuffleOrder() {
-            // 0〜45の配列を新しく用意してシャッフル
-            orderArray = Array.from({length: hiragana.length}, (_, i) => i);
+            orderArray = [];
+            for (let i = 0; i < hiragana.length; i++) {
+                orderArray.push(i);
+            }
             for (let i = orderArray.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [orderArray[i], orderArray[j]] = [orderArray[j], orderArray[i]];
+                let temp = orderArray[i];
+                orderArray[i] = orderArray[j];
+                orderArray[j] = temp;
             }
-            orderIndex = 0; // 最初からスタート
+            orderIndex = 0; 
         }
 
         // 順番を「あいうえお」順に戻す
         function resetOrder() {
-            orderArray = Array.from({length: hiragana.length}, (_, i) => i);
-            orderIndex = 0; // 最初からスタート
+            orderArray = [];
+            for (let i = 0; i < hiragana.length; i++) {
+                orderArray.push(i);
+            }
+            orderIndex = 0; 
         }
 
         function setSpeed(mode) {
-            if (isRunning) return; // 動作中は処理しない
+            if (isRunning) return; 
 
             if (mode === 'slow') {
                 speed = 2000;
@@ -268,7 +275,7 @@
 
         function start() {
             isRunning = true;
-            updateButtonStates(); // ボタンをロック
+            updateButtonStates(); 
             startStopBtn.innerText = "終了 (Stop)";
             startStopBtn.classList.add('running');
             showNext();
@@ -277,7 +284,7 @@
 
         function stop() {
             isRunning = false;
-            updateButtonStates(); // ボタンのロックを解除
+            updateButtonStates(); 
             startStopBtn.innerText = "再開 (Resume)";
             startStopBtn.classList.remove('running');
             clearInterval(timer);
@@ -299,7 +306,7 @@
             }
         });
 
-        // 初期実行（最初の文字を表示しておく）
+        // 初期実行
         updateDisplay();
         updateButtonStates();
     </script>
