@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ひらがなフラッシュカード</title>
+    <title>ひらがな・カタカナ フラッシュカード</title>
     
-    <!-- Google Fonts から BIZ UD教科書体（UDデジタル教科書体に極めて近いフォント）をオンラインから強制読み込み -->
+    <!-- Google Fonts から BIZ UD教科書体をオンラインから強制読み込み -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDKyokasho:wght@400;700&display=swap" rel="stylesheet">
@@ -15,7 +15,6 @@
             --bg-color: #f0f4f8;
             --text-color: #333;
             --accent-color: #4a90e2;
-            /* 1番目にWebフォントの英語名、その後にPC内のUDデジタル教科書体名を各種並べて100%適用させます */
             --font-kyokasho: "BIZ UDKyokasho", "BIZ UD教科書体", "UD デジタル 教科書体", "UD デジタル 教科書体 R", "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho R", "UD Digi Kyokasho NK-R", sans-serif;
         }
 
@@ -33,6 +32,17 @@
             user-select: none;
         }
 
+        /* 上部コントロール（文字種・ランダム選択） */
+        #top-controls {
+            padding: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
         /* 文字表示エリア */
         #display-container {
             flex-grow: 1;
@@ -43,14 +53,14 @@
         }
 
         #char-display {
-            font-size: 80vh; /* 画面高さの80% */
+            font-size: 70vh; /* 上下パネルがあるため少しだけ縮小調整 */
             line-height: 1;
             color: var(--text-color);
-            font-family: var(--font-kyokasho); /* ここでもフォントを強制指定 */
+            font-family: var(--font-kyokasho);
             transition: opacity 0.1s ease-in-out;
         }
 
-        /* コントロールパネル */
+        /* 下部コントロール（速度・再生） */
         #controls {
             padding: 20px;
             background: rgba(255, 255, 255, 0.9);
@@ -62,7 +72,7 @@
         }
 
         button {
-            padding: 15px 30px;
+            padding: 12px 24px;
             font-size: 1.2rem;
             cursor: pointer;
             border: none;
@@ -71,7 +81,7 @@
             border: 2px solid var(--accent-color);
             color: var(--accent-color);
             transition: all 0.2s;
-            font-family: var(--font-kyokasho); /* ボタンの文字も教科書体に */
+            font-family: var(--font-kyokasho);
             font-weight: bold;
         }
 
@@ -80,9 +90,11 @@
             color: white;
         }
 
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        /* ランダムボタン専用のスタイル（ON時にオレンジ色） */
+        #random-toggle.active {
+            background-color: #f5a623;
+            border-color: #f5a623;
+            color: white;
         }
 
         #start-stop {
@@ -100,6 +112,13 @@
 </head>
 <body>
 
+    <!-- 新設：文字種とランダムを切り替える上部パネル -->
+    <div id="top-controls">
+        <button id="mode-hiragana" class="active" onclick="setMode('hiragana')">ひらがな</button>
+        <button id="mode-katakana" onclick="setMode('katakana')">カタカナ</button>
+        <button id="random-toggle" onclick="toggleRandom()">ランダム</button>
+    </div>
+
     <div id="display-container">
         <div id="char-display">あ</div>
     </div>
@@ -112,30 +131,84 @@
 
     <script>
         const hiragana = [
-            'あ','い','う','え','お',
-            'か','き','く','け','こ',
-            'さ','し','す','せ','そ',
-            'た','ち','つ','て','と',
-            'な','に','ぬ','ね','の',
-            'は','ひ','ふ','へ','ほ',
-            'ま','み','む','め','も',
-            'や','ゆ','よ',
-            'ら','り','る','れ','ろ',
-            'わ','を','ん'
+            'あ','い','う','え','お','か','き','く','け','こ','さ','し','す','せ','そ',
+            'た','ち','つ','て','と','な','に','ぬ','ね','の','は','ひ','ふ','へ','ほ',
+            'ま','み','む','め','も','や','ゆ','よ','ら','り','る','れ','ろ','わ','を','ん'
         ];
 
-        let currentIndex = 0;
+        const katakana = [
+            'ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ','サ','シ','ス','セ','ソ',
+            'タ','チ','ツ','テ','ト','ナ','ニ','ヌ','ネ','ノ','ハ','ヒ','フ','ヘ','ホ',
+            'マ','ミ','ム','メ','モ','ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'
+        ];
+
+        let currentMode = 'hiragana'; // 'hiragana' または 'katakana'
+        let isRandom = false;
         let isRunning = false;
         let timer = null;
-        let speed = 2000; // デフォルトは「おそめ」の2秒
+        let speed = 2000;
+
+        // ランダム順を管理する配列とインデックス
+        let orderArray = [...Array(hiragana.length).keys()]; // [0, 1, 2, ..., 45] の初期順
+        let orderIndex = 0;
 
         const display = document.getElementById('char-display');
         const startStopBtn = document.getElementById('start-stop');
         const slowBtn = document.getElementById('speed-slow');
         const fastBtn = document.getElementById('speed-fast');
+        const hiraBtn = document.getElementById('mode-hiragana');
+        const kataBtn = document.getElementById('mode-katakana');
+        const randomBtn = document.getElementById('random-toggle');
 
-        // 音声合成の初期化
         const synth = window.speechSynthesis;
+
+        // ひらがな・カタカナの切り替え
+        function setMode(mode) {
+            currentMode = mode;
+            if (mode === 'hiragana') {
+                hiraBtn.classList.add('active');
+                kataBtn.classList.remove('active');
+            } else {
+                kataBtn.classList.add('active');
+                hiraBtn.classList.remove('active');
+            }
+            // 途中切り替え時、即座に現在の文字の表記を反映
+            updateDisplayOnly();
+        }
+
+        // ランダムボタンのオンオフ切り替え
+        function toggleRandom() {
+            isRandom = !isRandom;
+            if (isRandom) {
+                randomBtn.classList.add('active');
+                shuffleOrder();
+            } else {
+                randomBtn.classList.remove('active');
+                resetOrder();
+            }
+        }
+
+        // 順番をシャッフルする（フィッシャー・イェーツのシャッフル）
+        function shuffleOrder() {
+            // 現在表示されている文字のインデックスを特定
+            let currentTargetIndex = orderArray[orderIndex];
+            
+            // 配列をシャッフル
+            for (let i = orderArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [orderArray[i], orderArray[j]] = [orderArray[j], orderArray[i]];
+            }
+            // シャッフル後も、今見ている文字から連続してスムーズに繋がるよう位置を調整
+            orderIndex = orderArray.indexOf(currentTargetIndex);
+            if (orderIndex === -1) orderIndex = 0;
+        }
+
+        // 順番を「あいうえお」順に戻す
+        function resetOrder() {
+            let currentTargetIndex = orderArray[orderIndex];
+            orderArray = [...Array(hiragana.length).keys()];
+            orderIndex = currentTargetIndex; // 順番に戻しても現在の文字位置を維持
+        }
 
         function setSpeed(mode) {
             if (mode === 'slow') {
@@ -148,34 +221,37 @@
                 slowBtn.classList.remove('active');
             }
             
-            // 実行中に速度を変えた場合は再起動
             if (isRunning) {
                 stop();
                 start();
             }
         }
 
-        // 確実に一文字ずつクリアして発声させる関数
         function speak(text) {
-            // 現在再生中の音声をすべて強制停止（詰まり防止）
             synth.cancel();
-
-            // 新しい音声発話インスタンスを生成
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.lang = 'ja-JP';
-            uttr.rate = 1.0;  // 読み上げ速度
-
-            // 音声合成エンジンに発話キューを追加
+            uttr.rate = 1.0;
             synth.speak(uttr);
         }
 
+        // モード切り替え時に発声なしで文字だけ変える関数
+        function updateDisplayOnly() {
+            let targetIdx = orderArray[orderIndex];
+            let list = (currentMode === 'hiragana') ? hiragana : katakana;
+            display.innerText = list[targetIdx];
+        }
+
+        // 次の文字へ進んで発声するメイン処理
         function showNext() {
-            // 1. 先に画面の文字を切り替える
-            display.innerText = hiragana[currentIndex];
-            // 2. 切り替わった文字を一文字だけ発声する
-            speak(hiragana[currentIndex]);
+            let targetIdx = orderArray[orderIndex];
+            let list = (currentMode === 'hiragana') ? hiragana : katakana;
             
-            currentIndex = (currentIndex + 1) % hiragana.length;
+            display.innerText = list[targetIdx];
+            speak(list[targetIdx]);
+            
+            // 次のインデックスに進める
+            orderIndex = (orderIndex + 1) % orderArray.length;
         }
 
         function start() {
@@ -191,7 +267,6 @@
             startStopBtn.innerText = "再開 (Resume)";
             startStopBtn.classList.remove('running');
             clearInterval(timer);
-            // 停止時にも音声を止める
             synth.cancel();
         }
 
@@ -203,10 +278,9 @@
             }
         }
 
-        // キーボード操作（スペースキーで開始/停止）
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
-                e.preventDefault(); // スペースキーによる画面スクロールを防止
+                e.preventDefault();
                 togglePlay();
             }
         });
