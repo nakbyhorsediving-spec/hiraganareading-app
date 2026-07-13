@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ひらがなフラッシュカード</title>
+    
+    <!-- Google Fonts から BIZ UD教科書体（UDデジタル教科書体に極めて近いフォント）をオンラインから強制読み込み -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDKyokasho:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
         :root {
             --bg-color: #f0f4f8;
             --text-color: #333;
             --accent-color: #4a90e2;
-            /* WindowsのUDデジタル教科書体をブラウザが確実に認識できるように各種名前を網羅 */
-            --font-kyokasho: "UD デジタル 教科書体", "UD デジタル 教科書体 R", "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho R", "UD Digi Kyokasho NK-R", "BIZ UD教科書体", "Yu Kyokasho", "YuMincho", "HG教科書体", "Sawarabi Mincho", serif;
+            /* 1番目にWebフォントの英語名、その後にPC内のUDデジタル教科書体名を各種並べて100%適用させます */
+            --font-kyokasho: "BIZ UDKyokasho", "BIZ UD教科書体", "UD デジタル 教科書体", "UD デジタル 教科書体 R", "UD デジタル 教科書体 NK-R", "UD Digi Kyokasho R", "UD Digi Kyokasho NK-R", sans-serif;
         }
 
         body {
@@ -40,6 +46,7 @@
             font-size: 80vh; /* 画面高さの80% */
             line-height: 1;
             color: var(--text-color);
+            font-family: var(--font-kyokasho); /* ここでもフォントを強制指定 */
             transition: opacity 0.1s ease-in-out;
         }
 
@@ -64,7 +71,7 @@
             border: 2px solid var(--accent-color);
             color: var(--accent-color);
             transition: all 0.2s;
-            font-family: sans-serif;
+            font-family: var(--font-kyokasho); /* ボタンの文字も教科書体に */
             font-weight: bold;
         }
 
@@ -127,7 +134,7 @@
         const slowBtn = document.getElementById('speed-slow');
         const fastBtn = document.getElementById('speed-fast');
 
-        // 音声合成の準備
+        // 音声合成の初期化
         const synth = window.speechSynthesis;
 
         function setSpeed(mode) {
@@ -148,17 +155,24 @@
             }
         }
 
+        // 確実に一文字ずつクリアして発声させる関数
         function speak(text) {
-            // 前の音声をキャンセル
+            // 現在再生中の音声をすべて強制停止（詰まり防止）
             synth.cancel();
+
+            // 新しい音声発話インスタンスを生成
             const uttr = new SpeechSynthesisUtterance(text);
             uttr.lang = 'ja-JP';
-            uttr.rate = 1.0;
+            uttr.rate = 1.0;  // 読み上げ速度
+
+            // 音声合成エンジンに発話キューを追加
             synth.speak(uttr);
         }
 
         function showNext() {
+            // 1. 先に画面の文字を切り替える
             display.innerText = hiragana[currentIndex];
+            // 2. 切り替わった文字を一文字だけ発声する
             speak(hiragana[currentIndex]);
             
             currentIndex = (currentIndex + 1) % hiragana.length;
@@ -177,6 +191,8 @@
             startStopBtn.innerText = "再開 (Resume)";
             startStopBtn.classList.remove('running');
             clearInterval(timer);
+            // 停止時にも音声を止める
+            synth.cancel();
         }
 
         function togglePlay() {
@@ -190,6 +206,7 @@
         // キーボード操作（スペースキーで開始/停止）
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
+                e.preventDefault(); // スペースキーによる画面スクロールを防止
                 togglePlay();
             }
         });
