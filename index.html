@@ -53,7 +53,7 @@
         }
 
         #char-display {
-            font-size: 70vh; /* 上下パネルがあるため少しだけ縮小調整 */
+            font-size: 70vh;
             line-height: 1;
             color: var(--text-color);
             font-family: var(--font-kyokasho);
@@ -97,6 +97,12 @@
             color: white;
         }
 
+        /* 再生中に押せないボタンの見た目 */
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
         #start-stop {
             background-color: #e24a4a;
             border-color: #e24a4a;
@@ -112,7 +118,7 @@
 </head>
 <body>
 
-    <!-- 新設：文字種とランダムを切り替える上部パネル -->
+    <!-- 文字種とランダムを切り替える上部パネル -->
     <div id="top-controls">
         <button id="mode-hiragana" class="active" onclick="setMode('hiragana')">ひらがな</button>
         <button id="mode-katakana" onclick="setMode('katakana')">カタカナ</button>
@@ -142,14 +148,14 @@
             'マ','ミ','ム','メ','モ','ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'
         ];
 
-        let currentMode = 'hiragana'; // 'hiragana' または 'katakana'
+        let currentMode = 'hiragana'; 
         let isRandom = false;
         let isRunning = false;
         let timer = null;
         let speed = 2000;
 
-        // ランダム順を管理する配列とインデックス
-        let orderArray = [...Array(hiragana.length).keys()]; // [0, 1, 2, ..., 45] の初期順
+        // インデックス管理用の配列（あいうえお順のときは 0〜45 がそのまま入る）
+        let orderArray = Array.from({length: hiragana.length}, (_, i) => i);
         let orderIndex = 0;
 
         const display = document.getElementById('char-display');
@@ -162,8 +168,20 @@
 
         const synth = window.speechSynthesis;
 
+        // ボタンの活性・非活性を制御する関数
+        function updateButtonStates() {
+            // 再生中（isRunning === true）なら、設定系ボタンをすべて無効化（disabled）にする
+            hiraBtn.disabled = isRunning;
+            kataBtn.disabled = isRunning;
+            randomBtn.disabled = isRunning;
+            slowBtn.disabled = isRunning;
+            fastBtn.disabled = isRunning;
+        }
+
         // ひらがな・カタカナの切り替え
         function setMode(mode) {
+            if (isRunning) return; // 動作中は処理しない
+
             currentMode = mode;
             if (mode === 'hiragana') {
                 hiraBtn.classList.add('active');
@@ -172,12 +190,13 @@
                 kataBtn.classList.add('active');
                 hiraBtn.classList.remove('active');
             }
-            // 途中切り替え時、即座に現在の文字の表記を反映
-            updateDisplayOnly();
+            updateDisplay();
         }
 
         // ランダムボタンのオンオフ切り替え
         function toggleRandom() {
+            if (isRunning) return; // 動作中は処理しない
+
             isRandom = !isRandom;
             if (isRandom) {
                 randomBtn.classList.add('active');
@@ -186,31 +205,29 @@
                 randomBtn.classList.remove('active');
                 resetOrder();
             }
+            updateDisplay();
         }
 
-        // 順番をシャッフルする（フィッシャー・イェーツのシャッフル）
+        // 順番をシャッフルする
         function shuffleOrder() {
-            // 現在表示されている文字のインデックスを特定
-            let currentTargetIndex = orderArray[orderIndex];
-            
-            // 配列をシャッフル
+            // 0〜45の配列を新しく用意してシャッフル
+            orderArray = Array.from({length: hiragana.length}, (_, i) => i);
             for (let i = orderArray.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [orderArray[i], orderArray[j]] = [orderArray[j], orderArray[i]];
             }
-            // シャッフル後も、今見ている文字から連続してスムーズに繋がるよう位置を調整
-            orderIndex = orderArray.indexOf(currentTargetIndex);
-            if (orderIndex === -1) orderIndex = 0;
+            orderIndex = 0; // 最初からスタート
         }
 
         // 順番を「あいうえお」順に戻す
         function resetOrder() {
-            let currentTargetIndex = orderArray[orderIndex];
-            orderArray = [...Array(hiragana.length).keys()];
-            orderIndex = currentTargetIndex; // 順番に戻しても現在の文字位置を維持
+            orderArray = Array.from({length: hiragana.length}, (_, i) => i);
+            orderIndex = 0; // 最初からスタート
         }
 
         function setSpeed(mode) {
+            if (isRunning) return; // 動作中は処理しない
+
             if (mode === 'slow') {
                 speed = 2000;
                 slowBtn.classList.add('active');
@@ -219,11 +236,6 @@
                 speed = 800;
                 fastBtn.classList.add('active');
                 slowBtn.classList.remove('active');
-            }
-            
-            if (isRunning) {
-                stop();
-                start();
             }
         }
 
@@ -235,19 +247,19 @@
             synth.speak(uttr);
         }
 
-        // モード切り替え時に発声なしで文字だけ変える関数
-        function updateDisplayOnly() {
+        // 現在選択されている文字を表示する処理
+        function updateDisplay() {
             let targetIdx = orderArray[orderIndex];
             let list = (currentMode === 'hiragana') ? hiragana : katakana;
             display.innerText = list[targetIdx];
         }
 
-        // 次の文字へ進んで発声するメイン処理
+        // 次の文字へ進んで発声する処理
         function showNext() {
+            updateDisplay();
+            
             let targetIdx = orderArray[orderIndex];
             let list = (currentMode === 'hiragana') ? hiragana : katakana;
-            
-            display.innerText = list[targetIdx];
             speak(list[targetIdx]);
             
             // 次のインデックスに進める
@@ -256,6 +268,7 @@
 
         function start() {
             isRunning = true;
+            updateButtonStates(); // ボタンをロック
             startStopBtn.innerText = "終了 (Stop)";
             startStopBtn.classList.add('running');
             showNext();
@@ -264,6 +277,7 @@
 
         function stop() {
             isRunning = false;
+            updateButtonStates(); // ボタンのロックを解除
             startStopBtn.innerText = "再開 (Resume)";
             startStopBtn.classList.remove('running');
             clearInterval(timer);
@@ -284,6 +298,10 @@
                 togglePlay();
             }
         });
+
+        // 初期実行（最初の文字を表示しておく）
+        updateDisplay();
+        updateButtonStates();
     </script>
 </body>
 </html>
