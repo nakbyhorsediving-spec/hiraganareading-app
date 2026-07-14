@@ -40,7 +40,6 @@
             gap: 15px;
             background: rgba(255, 255, 255, 0.5);
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            /* ▼ 追加：大きな文字に隠されないように手前に配置 */
             position: relative;
             z-index: 10;
         }
@@ -71,7 +70,6 @@
             justify-content: center;
             gap: 15px;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            /* ▼ 追加：手前に配置 */
             position: relative;
             z-index: 10;
         }
@@ -149,13 +147,14 @@
         const katakana = [
             'ア','イ','ウ','エ','オ','カ','キ','ク','ケ','コ','サ','シ','ス','セ','ソ',
             'タ','チ','ツ','テ','ト','ナ','ニ','ヌ','ネ','ノ','ハ','ヒ','フ','ヘ','ホ',
-            'マ','み','ム','メ','モ','ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'
+            'マ','ミ','ム','メ','モ','ヤ','ユ','ヨ','ラ','リ','ル','レ','ロ','ワ','ヲ','ン'
         ];
 
         let currentMode = 'hiragana'; 
         let isRandom = false;
         let isRunning = false;
         let timer = null;
+        let randomTimeoutTimer = null; // ランダム時の2分制限タイマー用
         let speed = 2000;
 
         // インデックス管理用の配列を確実に生成
@@ -277,6 +276,14 @@
             
             // 次のインデックスに進める
             orderIndex = (orderIndex + 1) % orderArray.length;
+
+            // ランダムではない時、一巡してインデックスが0に戻ったら自動終了
+            if (!isRandom && orderIndex === 0) {
+                // 最後の文字の発声時間を少し考慮してから停止させるため、次のインターバルで止まるようにする
+                setTimeout(() => {
+                    if (isRunning) stop();
+                }, speed - 50); 
+            }
         }
 
         function start() {
@@ -286,6 +293,13 @@
             startStopBtn.classList.add('running');
             showNext();
             timer = setInterval(showNext, speed);
+
+            // ランダムモードの時は、2分（120,000ms）後に自動終了するタイマーをセット
+            if (isRandom) {
+                randomTimeoutTimer = setTimeout(() => {
+                    if (isRunning) stop();
+                }, 120000);
+            }
         }
 
         function stop() {
@@ -294,6 +308,13 @@
             startStopBtn.innerText = "再開 (Resume)";
             startStopBtn.classList.remove('running');
             clearInterval(timer);
+            
+            // 2分タイマーが動いていればクリアする
+            if (randomTimeoutTimer) {
+                clearTimeout(randomTimeoutTimer);
+                randomTimeoutTimer = null;
+            }
+
             synth.cancel();
         }
 
